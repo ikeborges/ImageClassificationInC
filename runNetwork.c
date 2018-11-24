@@ -7,35 +7,50 @@
 #define N_OF_FEATURES 536
 
 double** loadDatasetFile(); 
+void sortIndexes(int *trainingIndexes, int *testingIndexes);
+int existsIn(int number, int *array, int length);
 
 int main(int argc, char const *argv[])
 {
-    double **dataset; 
+    int trainingIndexes[50], testingIndexes[50];
+    double **dataset;
 
-    dataset = loadDatasetFile();
+    srand(time(NULL)); // Seed rand funcion with time
+
+    dataset = loadDatasetFile(); // Load dataset from file
+    sortIndexes(trainingIndexes, testingIndexes); // Sort dataset indexes randomly and mount arrays to train and test network
     
-    for(int i = 0; i < DATASET_SIZE; i++)
-    {
-        for(int j = 0; j < N_OF_FEATURES + 1; j++)
-        {
-            printf("%lf ", dataset[i][j]);
-        }
-        printf("\n---------------------\n");
-        
-    }
+
+    // for(int i = 0; i < DATASET_SIZE; i++)
+    // {
+    //     for(int j = 0; j < N_OF_FEATURES + 1; j++)
+    //         printf("%lf ", dataset[i][j]);
+    //     printf("\n---------------------\n");
+    // }
+
+    // Dar shuffle no começo de cada época
         
     for(int i = 0; i < DATASET_SIZE; i++)
         free(dataset[i]);
     free(dataset);
     
-
     return 0;
+}
+
+int existsIn(int number, int *array, int length){
+    int exists = 0;
+    for(int i = 0; i < length; i++){
+        if(array[i] == number)
+            return exists = 1;
+    }    
+    return exists;
 }
 
 double** loadDatasetFile()
 {
     FILE *file;
     double **dataset;
+    int nOfReads = 0; // Flag to check if file is empty
 
     file = fopen("./features.txt", "r");
     if(file == NULL){printf("Error while opening features file\n");exit(-1);}
@@ -56,9 +71,8 @@ double** loadDatasetFile()
     {
         fscanf(file, "%lf%c ", &feature, &character); // Get a number and a char
         dataset[i][j] = feature;
+        nOfReads++;
 
-        // printf("%d %d\n", i, j);
-        
         if(character == ' ') // If char is a whitespace, go to next position in vector
         {
             j++;
@@ -70,7 +84,59 @@ double** loadDatasetFile()
         }
 
     }
+
+    if(nOfReads != 53700){printf("Features file is damaged, run \"./calcFeatures\" to calculate features from dataset images\n");exit(-100);}
     
     fclose(file);
     return dataset;
+}
+
+void shuffle( int *array, int n ) 
+{ 
+    for (int i = n-1; i > 0; i--) 
+    { 
+        // Pick a random index from 0 to i 
+        int j = rand() % (i+1); 
+  
+        // Swap array index with the element at random index 
+        int temp = array[i]; 
+        array[i] = array[j]; 
+        array[j] = temp; 
+    } 
+} 
+
+void sortIndexes(int *trainingIndexes, int *testingIndexes){
+    int i = 0, j = 0, n = 0;
+    
+    while(i < 25) { // Generates 25 grass indexes to use in training set
+        int index = rand() % 50;
+        if(!existsIn(index, trainingIndexes, 50)) // Check if index is already in the array
+        {
+            trainingIndexes[i] = index;
+            i++;
+        }
+    }
+
+    i=0;
+    j=0;
+    while(i < 25) { // Generates 25 asphalt indexes to use in training set
+        int index = rand() % (99 + 1 - 50) + 50;
+        if(!existsIn(index, trainingIndexes, 50)) // Check if index is already in the array
+        {
+            trainingIndexes[i + 25] = index;
+            i++;
+        }
+    }
+        
+    while(j < 50) { // Increments n until find numbers that aren't in array
+        if(!existsIn(n, trainingIndexes, 50)){
+            testingIndexes[j] = n;
+            j++;
+        }
+        n++;
+    }
+
+    // Shuffle arrays to not bias results based on order of insertion in array
+    shuffle(trainingIndexes, 50);
+    shuffle(testingIndexes, 50);
 }
