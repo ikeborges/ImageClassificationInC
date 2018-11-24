@@ -44,7 +44,7 @@ int main(int argc, char const *argv[])
 
         // Escreve as métricas no arquivo de features
         for(int j=0;j<536;j++)
-            fprintf(arquivo, "%lf ", descritor_normalizado[i]);
+            fprintf(arquivo, "%lf ", descritor_normalizado[j]);
         
         // Insere 1 ao final de cada linha para marcar o vetor como sendo grama
         fprintf(arquivo, "1\n");
@@ -77,7 +77,7 @@ int main(int argc, char const *argv[])
 
         // Escreve as métricas no arquivo de features
         for(int j=0;j<536;j++)
-            fprintf(arquivo, "%lf ", descritor_normalizado[i]);
+            fprintf(arquivo, "%lf ", descritor_normalizado[j]);
         
         // Insere 0 ao final de cada linha para marcar o vetor como sendo asfalto
         fprintf(arquivo, "0\n");
