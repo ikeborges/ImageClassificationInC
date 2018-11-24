@@ -6,6 +6,7 @@
 #define DATASET_SIZE 100
 #define N_OF_FEATURES 536
 
+void checkArgs(char const *argv[]);
 double** loadDatasetFile(); 
 void sortIndexes(int *trainingIndexes, int *testingIndexes);
 int existsIn(int number, int *array, int length);
@@ -17,24 +18,29 @@ int main(int argc, char const *argv[])
 
     srand(time(NULL)); // Seed rand funcion with time
 
+    checkArgs(argv); // Check if argument is valid
     dataset = loadDatasetFile(); // Load dataset from file
     sortIndexes(trainingIndexes, testingIndexes); // Sort dataset indexes randomly and mount arrays to train and test network
-    
-
-    // for(int i = 0; i < DATASET_SIZE; i++)
-    // {
-    //     for(int j = 0; j < N_OF_FEATURES + 1; j++)
-    //         printf("%lf ", dataset[i][j]);
-    //     printf("\n---------------------\n");
-    // }
-
-    // Dar shuffle no começo de cada época
         
     for(int i = 0; i < DATASET_SIZE; i++)
         free(dataset[i]);
     free(dataset);
     
     return 0;
+}
+
+void checkArgs(char const *argv[])
+{
+    if(argv[1] == NULL)
+    {
+        printf("Argument not identified. Exiting program...\n");
+        exit(-11);
+    }
+    else if(atoi(argv[1]) <= 0)
+    {
+        printf("Given argument must be an integer greater than 0.\n");
+        exit(-12);
+    }
 }
 
 int existsIn(int number, int *array, int length){
