@@ -3,11 +3,29 @@
 #include <time.h>
 #include <math.h>
 
-#define DATASET_SIZE 100
-#define N_OF_FEATURES 536
+#define DATASET_SIZE 100 // Size of dataset
+#define N_OF_FEATURES 536 // Number of features each item in dataset has
+#define GRASS 1 // Representation of Grass
+#define ASPHALT 0 // Representation of Asphalt
+#define RANDOM_MIN -16000.0 // Minimum number for random weight and bias generation
+#define RANDOM_MAX 15999.9  // Maximum number for random weight and bias generation
+
+/* 
+    As C's structures don't have functions in their body the neurons here (aka struct NEURON) only stores weights and biases,
+    leaving the storage of inputs and outputs as well as the activation function application to the propagation and backpropagation functions themselves
+*/
+typedef struct NEURON
+{
+    double *weights;
+    double bias;
+} Neuron;
 
 void checkArgs(char const *argv[]);
+Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize);
 int existsIn(int number, int *array, int length);
+void freeResources(double **dataset, Neuron **network, int hiddenLayerSize);
+double getRandomNumber();
+Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons);
 double** loadDatasetFile(); 
 void shuffle(int *array, int n);
 void sortIndexes(int *trainingIndexes, int *testingIndexes);
@@ -16,26 +34,22 @@ int main(int argc, char const *argv[])
 {
     int trainingIndexes[50] = {0}, testingIndexes[50] = {0};
     double **dataset;
-
+    Neuron **network;
     srand(time(NULL)); // Seed rand funcion with time
 
     checkArgs(argv); // Check if argument is valid
+    int hiddenLayerSize = atoi(argv[1]);
+
+    network = createAndInitNetwork(N_OF_FEATURES, hiddenLayerSize); // Creates and initalizes network
+
+    ///////////////////////////////////////////////////
+    /*              Network training                */
+    /////////////////////////////////////////////////
+
     dataset = loadDatasetFile(); // Load dataset from file
     sortIndexes(trainingIndexes, testingIndexes); // Sort dataset indexes randomly and mount arrays to train and test network
-    
-    // for(int i = 0; i < DATASET_SIZE; i++)
-    // {
-    //     for(int j = 0; j < N_OF_FEATURES + 1; j++)
-    //         printf("%lf ", dataset[i][j]);
-    //     printf("\n---------------------\n");
-    // }
 
-    // Dar shuffle no começo de cada época
-        
-    for(int i = 0; i < DATASET_SIZE; i++)
-        free(dataset[i]);
-    free(dataset);
-    
+    freeResources(dataset, network, hiddenLayerSize);
     return 0;
 }
 
@@ -53,6 +67,31 @@ void checkArgs(char const *argv[])
     }
 }
 
+Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize)
+{
+    Neuron **network;
+
+    network = (Neuron **)malloc(sizeof(Neuron *) * 3); // Allocate network with the 3 layers as arrays
+    if(network==NULL){printf("Error while allocating memory for network");exit(-15);}
+
+    // Allocate layers
+    network[0] = (Neuron *)malloc(sizeof(Neuron) * inputSize); // Allocate INPUT layer
+    network[1] = (Neuron *)malloc(sizeof(Neuron) * hiddenLayerSize); // Allocate HIDDEN layer
+    network[2] = (Neuron *)malloc(sizeof(Neuron) * 1); // Allocate OUTPUT layer
+
+    // Check if allocation worked
+    if(network[0]==NULL){printf("Error while allocating memory for input layer");exit(-16);}
+    if(network[1]==NULL){printf("Error while allocating memory for hidden layer");exit(-17);}
+    if(network[2]==NULL){printf("Error while allocating memory for output layer");exit(-18);}
+
+    // Initialize layers
+    network[0] = initLayer(network[0], inputSize, inputSize); // Initializes INPUT layer
+    network[1] = initLayer(network[1], inputSize, hiddenLayerSize); // Initializes HIDDEN layer
+    network[2] = initLayer(network[2], hiddenLayerSize, 1); // Initializes OUTPUT layer
+
+    return network;
+}
+
 int existsIn(int number, int array[], int length)
 {
     for(int i = 0; i < length; i++)
@@ -61,6 +100,58 @@ int existsIn(int number, int array[], int length)
             return 1;
     }    
     return 0;
+}
+
+void freeResources(double **dataset, Neuron **network, int hiddenLayerSize)
+{
+    // Free dataset
+    for(int i = 0; i < DATASET_SIZE; i++)
+        free(dataset[i]);
+    free(dataset);
+
+    // Free layer 1 weights
+   for(int j = 0; j < N_OF_FEATURES; j++)
+        free(network[0][j].weights);    
+
+    // Free layer 2 weights
+    for(int j = 0; j < hiddenLayerSize; j++)
+        free(network[1][j].weights);
+
+    // Free layer 3 weights
+    free(network[2][0].weights);
+
+    // Free network layers
+    for(int j = 0; j < 3; j++)
+        free(network[j]);
+
+    free(network);
+}
+
+double getRandomNumber() 
+{
+    double range = (RANDOM_MAX - RANDOM_MIN); 
+    double div = RAND_MAX / range;
+    return RANDOM_MIN + (rand() / div);
+}
+
+Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons)
+{
+    for(int i=0; i < nOfNeurons; i++)
+    {
+        Neuron neuron;
+
+        // Allocate weights
+        neuron.weights = (double *)malloc(sizeof(double) * nOfWeights);
+        if(neuron.weights==NULL){printf("Error while allocating memory for neuron weights");exit(-19);}
+
+        for(int j=0; j < nOfWeights; j++)
+            neuron.weights[j] = getRandomNumber();
+
+        neuron.bias = getRandomNumber();
+        layer[i] = neuron;
+    }
+
+    return layer;
 }
 
 double** loadDatasetFile()
@@ -157,18 +248,4 @@ void sortIndexes(int *trainingIndexes, int *testingIndexes)
     // Shuffle arrays to not bias results based on order of insertion in array
     shuffle(trainingIndexes, 50);
     shuffle(testingIndexes, 50);
-
-    
-    for(int i = 0; i < 50; i++)
-    {
-        printf("%d ", trainingIndexes[i]);
-    }
-    printf("\n");
-    
-
-    for(int i = 0; i < 50; i++)
-    {
-        printf("%d ", testingIndexes[i]);
-    }
-    printf("\n");
 }
