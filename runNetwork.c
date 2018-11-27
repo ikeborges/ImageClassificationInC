@@ -28,14 +28,15 @@ double feedNetwork(double *imageFeatures, Neuron **network, int inputSize, int h
 void freeResources(double **dataset, Neuron **network, int hiddenLayerSize);
 double getRandomNumber();
 Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons);
-double** loadDatasetFile(); 
+double** loadDatasetFile();
+double sigmoidDv(double x);
 void shuffle(int *array, int n);
 void sortIndexes(int *trainingIndexes, int *testingIndexes);
 
 int main(int argc, char const *argv[])
 {
     int trainingIndexes[50] = {0}, testingIndexes[50] = {0};
-    double **dataset, result;
+    double **dataset, output, error, errors[50] = {0};
     Neuron **network;
     srand(time(NULL)); // Seed rand funcion with time
 
@@ -50,7 +51,11 @@ int main(int argc, char const *argv[])
     /*              Network training                */
     /////////////////////////////////////////////////
 
-    result = feedNetwork(dataset[trainingIndexes[0]], network, N_OF_FEATURES, hiddenLayerSize);
+    output = feedNetwork(dataset[trainingIndexes[0]], network, N_OF_FEATURES, hiddenLayerSize); // Feed network with dataset data
+    error = dataset[trainingIndexes[0]][N_OF_FEATURES] - output; // Calculates error
+    errors[0] = error; // Add error to this epoch's array of errors
+
+    printf("%lf\n", sigmoidDv(0.2312));
 
     freeResources(dataset, network, hiddenLayerSize);
     return 0;
@@ -240,6 +245,11 @@ double** loadDatasetFile()
     
     fclose(file);
     return dataset;
+}
+
+double sigmoidDv(double x)
+{
+    return pow(M_E, -x)/pow(pow(M_E, -x) + 1.0, 2.0);
 }
 
 void shuffle(int *array, int n)
