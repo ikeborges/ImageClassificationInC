@@ -23,6 +23,8 @@ typedef struct NEURON
 void checkArgs(char const *argv[]);
 Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize);
 int existsIn(int number, int *array, int length);
+double *feedLayer(Neuron *layer, double *input, int layerSize, int inputSize);
+double feedNetwork(double *imageFeatures, Neuron **network, int inputSize, int hiddenLayerSize);
 void freeResources(double **dataset, Neuron **network, int hiddenLayerSize);
 double getRandomNumber();
 Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons);
@@ -33,21 +35,22 @@ void sortIndexes(int *trainingIndexes, int *testingIndexes);
 int main(int argc, char const *argv[])
 {
     int trainingIndexes[50] = {0}, testingIndexes[50] = {0};
-    double **dataset;
+    double **dataset, result;
     Neuron **network;
     srand(time(NULL)); // Seed rand funcion with time
 
     checkArgs(argv); // Check if argument is valid
     int hiddenLayerSize = atoi(argv[1]);
 
+    dataset = loadDatasetFile(); // Load dataset from file
+    sortIndexes(trainingIndexes, testingIndexes); // Sort dataset indexes randomly and mount arrays to train and test network
     network = createAndInitNetwork(N_OF_FEATURES, hiddenLayerSize); // Creates and initalizes network
 
     ///////////////////////////////////////////////////
     /*              Network training                */
     /////////////////////////////////////////////////
 
-    dataset = loadDatasetFile(); // Load dataset from file
-    sortIndexes(trainingIndexes, testingIndexes); // Sort dataset indexes randomly and mount arrays to train and test network
+    result = feedNetwork(dataset[trainingIndexes[0]], network, N_OF_FEATURES, hiddenLayerSize);
 
     freeResources(dataset, network, hiddenLayerSize);
     return 0;
@@ -100,6 +103,46 @@ int existsIn(int number, int array[], int length)
             return 1;
     }    
     return 0;
+}
+
+double *feedLayer(Neuron *layer, double *input, int layerSize, int inputSize)
+{
+    double *result, sum = 0;
+
+    result = (double *)malloc(sizeof(double) * layerSize);
+    if(result==NULL){printf("Error while allocating memory for intermediary array");exit(-20);}
+
+    for(int i = 0; i < layerSize; i++)
+    {
+        for(int j = 0; j < inputSize; j++)
+            sum += input[j] * layer[i].weights[j];
+
+        sum += layer[i].bias;        
+        result[i] = (double)1.0/(1.0 + pow(M_E, -sum)); // Sigmoid function. M_E is the e constant of math.h
+    }
+    return result;
+}
+
+double feedNetwork(double *imageFeatures, Neuron **network, int inputSize, int hiddenLayerSize)
+{
+    /* The logic here is that each neuron output of one layer is stored in an intermediary array,
+    that becomes the input of each neuron of the subsequent layer */
+    
+    double *inter12, *inter23, *result, resultValue;
+
+    // Feed layers
+    inter12 = feedLayer(network[0], imageFeatures, inputSize, inputSize); // Input layer
+    inter23 = feedLayer(network[1], inter12, hiddenLayerSize, inputSize); // Hidden layer
+    result = feedLayer(network[2], inter23, 1, hiddenLayerSize); // Output layer
+
+    resultValue = *result;
+
+    // Free resources
+    free(inter12);
+    free(inter23);
+    free(result);
+
+    return resultValue;
 }
 
 void freeResources(double **dataset, Neuron **network, int hiddenLayerSize)
