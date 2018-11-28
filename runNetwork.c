@@ -20,11 +20,11 @@ typedef struct NEURON
     double bias;
 } Neuron;
 
+void backpropagate(Neuron **network, double *imageFeatures, double error, double *inter12, double *inter23, double output, int inputSize, int hiddenLayerSize);
 void checkArgs(char const *argv[]);
 Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize);
 int existsIn(int number, int *array, int length);
 double *feedLayer(Neuron *layer, double *input, int layerSize, int inputSize);
-double feedNetwork(double *imageFeatures, Neuron **network, int inputSize, int hiddenLayerSize);
 void freeResources(double **dataset, Neuron **network, int hiddenLayerSize);
 double getRandomNumber();
 Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons);
@@ -51,14 +51,100 @@ int main(int argc, char const *argv[])
     /*              Network training                */
     /////////////////////////////////////////////////
 
-    output = feedNetwork(dataset[trainingIndexes[0]], network, N_OF_FEATURES, hiddenLayerSize); // Feed network with dataset data
-    error = dataset[trainingIndexes[0]][N_OF_FEATURES] - output; // Calculates error
+    /* 
+        The logic here is that each neuron output of one layer is stored in an intermediary array,
+    that becomes the input of each neuron of the subsequent layer
+    */
+
+    double *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = {0}, *imageFeatures = {0}, inputSize;
+    
+    // Aliases improve readability
+    imageFeatures = dataset[trainingIndexes[0]];
+    inputSize = N_OF_FEATURES;
+
+    /* ============= Propagate ============= */
+    
+    inter12 = feedLayer(network[0], imageFeatures, inputSize, inputSize); // Feed Input layer
+    inter23 = feedLayer(network[1], inter12, hiddenLayerSize, inputSize); // Feed Hidden layer
+    result = feedLayer(network[2], inter23, 1, hiddenLayerSize); // Feed Output layer
+    resultValue = *result;
+
+    error = imageFeatures[N_OF_FEATURES] - resultValue;
     errors[0] = error; // Add error to this epoch's array of errors
 
-    printf("%lf\n", sigmoidDv(0.2312));
+    /* ============= Backpropagate ============= */
+
+    backpropagate(network, imageFeatures, error, inter12, inter12, resultValue, inputSize, hiddenLayerSize);
+
+    free(inter12);
+    free(inter23);
+    free(result);
+    
+    // printf("-> %lf\n", errors[0]);
 
     freeResources(dataset, network, hiddenLayerSize);
     return 0;
+}
+
+void backpropagate(Neuron **network, double *imageFeatures, double error, double *inter12, double *inter23, double output, int inputSize, int hiddenLayerSize)
+{
+    double delta, outputDelta, deltas[hiddenLayerSize];
+    double weights12[inputSize][hiddenLayerSize], weights23[hiddenLayerSize];
+
+    Neuron *inputLayer, *hiddenLayer, *outputLayer;
+    inputLayer = network[0];
+    hiddenLayer = network[1];
+    outputLayer = network[2];
+
+    // Copying weights so that values are not lost when updating neurons
+    for(int i = 0; i < inputSize; i++)
+    {
+        for(int j = 0; j < hiddenLayerSize; j++)
+            weights12[i][j] = hiddenLayer[j].weights[i];
+    }
+
+    for(int i = 0; i < hiddenLayerSize; i++)
+        weights23[i] = outputLayer[0].weights[i];
+
+    /* ============= Update values ============= */
+
+    // Output layer
+    outputDelta = sigmoidDv(output) * error;
+
+    for(int i = 0; i < hiddenLayerSize; i++)
+        outputLayer[0].weights[i] += inter23[i] * outputDelta;
+
+    outputLayer[0].bias += outputDelta;
+
+    // Hidden layer
+    for(int i = 0; i < hiddenLayerSize; i++)
+    {
+        delta = sigmoidDv(inter23[i]) * (weights23[i] + outputDelta);     
+
+        for(int j = 0; j < inputSize; j++)
+            hiddenLayer[i].weights[j] += inter12[j] * delta;
+
+        hiddenLayer[i].bias += delta;
+        deltas[i] = delta;
+    }
+
+    // Input layer
+    for(int i = 0; i < inputSize; i++)
+    {
+        double sum = 0;
+
+        for(int j = 0; j < hiddenLayerSize; j++)
+            sum += deltas[j] * weights12[i][j];
+
+        delta = sigmoidDv(inter12[i]) * sum;        
+
+        for(int k = 0; k < inputSize; k++)
+        {
+            inputLayer[i].weights[k] += imageFeatures[k] * delta;
+        }
+        inputLayer[i].bias += delta;
+    }
+    
 }
 
 void checkArgs(char const *argv[])
@@ -126,28 +212,6 @@ double *feedLayer(Neuron *layer, double *input, int layerSize, int inputSize)
         result[i] = (double)1.0/(1.0 + pow(M_E, -sum)); // Sigmoid function. M_E is the e constant of math.h
     }
     return result;
-}
-
-double feedNetwork(double *imageFeatures, Neuron **network, int inputSize, int hiddenLayerSize)
-{
-    /* The logic here is that each neuron output of one layer is stored in an intermediary array,
-    that becomes the input of each neuron of the subsequent layer */
-    
-    double *inter12, *inter23, *result, resultValue;
-
-    // Feed layers
-    inter12 = feedLayer(network[0], imageFeatures, inputSize, inputSize); // Input layer
-    inter23 = feedLayer(network[1], inter12, hiddenLayerSize, inputSize); // Hidden layer
-    result = feedLayer(network[2], inter23, 1, hiddenLayerSize); // Output layer
-
-    resultValue = *result;
-
-    // Free resources
-    free(inter12);
-    free(inter23);
-    free(result);
-
-    return resultValue;
 }
 
 void freeResources(double **dataset, Neuron **network, int hiddenLayerSize)
@@ -247,7 +311,7 @@ double** loadDatasetFile()
     return dataset;
 }
 
-double sigmoidDv(double x)
+double sigmoidDv(double x) // Applies value of x in the derivative of sigmoid function
 {
     return pow(M_E, -x)/pow(pow(M_E, -x) + 1.0, 2.0);
 }
