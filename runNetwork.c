@@ -21,6 +21,7 @@ typedef struct NEURON
 } Neuron;
 
 void backpropagate(Neuron **network, double *imageFeatures, double error, double *inter12, double *inter23, double output, int inputSize, int hiddenLayerSize);
+double calcMSE(double *errors);
 void checkArgs(char const *argv[]);
 Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize);
 int existsIn(int number, int *array, int length);
@@ -35,8 +36,8 @@ void sortIndexes(int *trainingIndexes, int *testingIndexes);
 
 int main(int argc, char const *argv[])
 {
-    int trainingIndexes[50] = {0}, testingIndexes[50] = {0};
-    double **dataset, output, error, errors[50] = {0};
+    int trainingIndexes[50] = {0}, testingIndexes[50] = {0}, epochs = 0;
+    double **dataset, output, error, errors[50] = {0}, *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = {0}, *imageFeatures = {0}, inputSize, mse = 1;
     Neuron **network;
     srand(time(NULL)); // Seed rand funcion with time
 
@@ -56,31 +57,41 @@ int main(int argc, char const *argv[])
     that becomes the input of each neuron of the subsequent layer
     */
 
-    double *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = {0}, *imageFeatures = {0}, inputSize;
-    
-    // Aliases improve readability
-    imageFeatures = dataset[trainingIndexes[0]];
-    inputSize = N_OF_FEATURES;
+    printf("==========> Training network...\n");
+    while(epochs < 1000 && mse >= 0.2)
+    {
+        for(int i = 0; i < 50; i++)
+        {
+            // Aliases improve readability
+            imageFeatures = dataset[trainingIndexes[i]];
+            inputSize = N_OF_FEATURES;
 
-    /* ============= Propagate ============= */
-    
-    inter12 = feedLayer(network[0], imageFeatures, inputSize, inputSize); // Feed Input layer
-    inter23 = feedLayer(network[1], inter12, hiddenLayerSize, inputSize); // Feed Hidden layer
-    result = feedLayer(network[2], inter23, 1, hiddenLayerSize); // Feed Output layer
-    resultValue = *result;
+            /* ============= Propagate ============= */
+            
+            inter12 = feedLayer(network[0], imageFeatures, inputSize, inputSize); // Feed Input layer
+            inter23 = feedLayer(network[1], inter12, hiddenLayerSize, inputSize); // Feed Hidden layer
+            result = feedLayer(network[2], inter23, 1, hiddenLayerSize); // Feed Output layer
+            resultValue = *result;
 
-    error = imageFeatures[N_OF_FEATURES] - resultValue;
-    errors[0] = error; // Add error to this epoch's array of errors
+            error = imageFeatures[N_OF_FEATURES] - resultValue;
+            errors[i] = error; // Add error to this epoch's array of errors
 
-    /* ============= Backpropagate ============= */
+            /* ============= Backpropagate ============= */
 
-    backpropagate(network, imageFeatures, error, inter12, inter12, resultValue, inputSize, hiddenLayerSize);
+            backpropagate(network, imageFeatures, error, inter12, inter12, resultValue, inputSize, hiddenLayerSize);
 
-    free(inter12);
-    free(inter23);
-    free(result);
-    
-    // printf("-> %lf\n", errors[0]);
+            free(inter12);
+            free(inter23);
+            free(result);
+        }
+
+        mse = calcMSE(errors);
+        epochs++;
+        printf("\nÉpoca %d\n", epochs);
+        printf("MSE: %lf\n", mse);
+
+        shuffle(trainingIndexes, 50);
+    }    
 
     freeResources(dataset, network, hiddenLayerSize);
     return 0;
@@ -145,6 +156,15 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
         inputLayer[i].bias += delta;
     }
     
+}
+
+double calcMSE(double *errors)
+{
+    double sum = 0;
+    for(int i = 0; i < 50; i++)
+        sum += pow(errors[i], 2);
+    
+    return sum/50.0;
 }
 
 void checkArgs(char const *argv[])
