@@ -5,8 +5,8 @@
 
 #define DATASET_SIZE 100 // Size of dataset
 #define N_OF_FEATURES 536 // Number of features each item in dataset has
-#define GRASS 1 // Representation of Grass
-#define ASPHALT 0 // Representation of Asphalt
+#define GRASS 1.0 // Representation of Grass
+#define ASPHALT 0.0 // Representation of Asphalt
 #define RANDOM_MIN -16000.0 // Minimum number for random weight and bias generation
 #define RANDOM_MAX 15999.9  // Maximum number for random weight and bias generation
 
@@ -37,7 +37,7 @@ void sortIndexes(int *trainingIndexes, int *testingIndexes);
 int main(int argc, char const *argv[])
 {
     int trainingIndexes[50] = {0}, testingIndexes[50] = {0}, epochs = 0;
-    double **dataset, output, error, errors[50] = {0}, *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = {0}, *imageFeatures = {0}, inputSize, mse = 1;
+    double **dataset, output, error, errors[50] = {0}, *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = {0}, *imageFeatures = {0}, inputSize, mse = 1, right = 0, falseAcceptance = 0, falseRejection = 0;
     Neuron **network;
     srand(time(NULL)); // Seed rand funcion with time
 
@@ -91,7 +91,49 @@ int main(int argc, char const *argv[])
         printf("MSE: %lf\n", mse);
 
         shuffle(trainingIndexes, 50);
-    }    
+    }
+
+    ///////////////////////////////////////////////////
+    /*              Network testing/                */
+    /////////////////////////////////////////////////   
+    for(int i = 0; i < 50; i++)
+    {
+        // Aliases improve readability
+        imageFeatures = dataset[testingIndexes[i]];
+        inputSize = N_OF_FEATURES;
+
+        /* ============= Propagate ============= */
+        
+        inter12 = feedLayer(network[0], imageFeatures, inputSize, inputSize); // Feed Input layer
+        inter23 = feedLayer(network[1], inter12, hiddenLayerSize, inputSize); // Feed Hidden layer
+        result = feedLayer(network[2], inter23, 1, hiddenLayerSize); // Feed Output layer
+        resultValue = *result;
+
+        if(imageFeatures[536] == ASPHALT) // If image is asphalt
+        {
+            if(resultValue <= 0.5) // If image was considered as asphalt
+                right++;
+            else // If was considered grass
+                falseAcceptance++;
+        }
+        else if(imageFeatures[536] == GRASS) // If image is grass
+        {
+            if(resultValue > 0.5) // If image was considered as grass
+                right++;
+            else
+                falseRejection++;
+        }
+
+        free(inter12);
+        free(inter23);
+        free(result);
+    }
+
+    printf("\n===========================\n");
+    printf("Taxa de acerto: %lf%%\n", 100*right/50);
+    printf("Taxa de falsa aceitação: %lf%%\n", 100*falseAcceptance/50);
+    printf("Taxa de falsa rejeição: %lf%%\n", 100*falseRejection/50);
+    printf("\n===========================\n");
 
     freeResources(dataset, network, hiddenLayerSize);
     return 0;
