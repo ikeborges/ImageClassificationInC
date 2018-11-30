@@ -7,8 +7,8 @@
 #define N_OF_FEATURES 536 // Number of features each item in dataset has
 #define GRASS 1.0 // Representation of Grass
 #define ASPHALT 0.0 // Representation of Asphalt
-#define RANDOM_MIN -16000.0 // Minimum number for random weight and bias generation
-#define RANDOM_MAX 15999.9  // Maximum number for random weight and bias generation
+#define RANDOM_MIN -16000 // Minimum number for random weight and bias generation
+#define RANDOM_MAX 15999  // Maximum number for random weight and bias generation
 
 /* 
     As C's structures don't have functions in their body the neurons here (aka struct NEURON) only stores weights and biases,
@@ -37,7 +37,7 @@ void sortIndexes(int *trainingIndexes, int *testingIndexes);
 int main(int argc, char const *argv[])
 {
     int trainingIndexes[50] = {0}, testingIndexes[50] = {0}, epochs = 0;
-    double **dataset, output, error, errors[50] = {0}, *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = {0}, *imageFeatures = {0}, inputSize, mse = 1, right = 0, falseAcceptance = 0, falseRejection = 0;
+    double **dataset, output, error, errors[50] = {0}, *inter12 = {0}, *inter23 = {0}, *result = {0}, resultValue = 0, *imageFeatures = {0}, inputSize, mse = 1, right = 0, falseAcceptance = 0, falseRejection = 0;
     Neuron **network;
     srand(time(NULL)); // Seed rand funcion with time
 
@@ -58,6 +58,7 @@ int main(int argc, char const *argv[])
     */
 
     printf("==========> Training network...\n");
+    
     while(epochs < 1000 && mse >= 0.2)
     {
         for(int i = 0; i < 50; i++)
@@ -90,12 +91,13 @@ int main(int argc, char const *argv[])
         printf("\nÉpoca %d\n", epochs);
         printf("MSE: %lf\n", mse);
 
-        shuffle(trainingIndexes, 50);
+        shuffle(trainingIndexes, 50); // Shuffle training array to train network using a different sequence in next epoch
     }
 
     ///////////////////////////////////////////////////
     /*              Network testing/                */
-    /////////////////////////////////////////////////   
+    /////////////////////////////////////////////////
+
     for(int i = 0; i < 50; i++)
     {
         // Aliases improve readability
@@ -133,7 +135,7 @@ int main(int argc, char const *argv[])
     printf("Taxa de acerto: %lf%%\n", 100*right/50);
     printf("Taxa de falsa aceitação: %lf%%\n", 100*falseAcceptance/50);
     printf("Taxa de falsa rejeição: %lf%%\n", 100*falseRejection/50);
-    printf("\n===========================\n");
+    printf("===========================\n");
 
     freeResources(dataset, network, hiddenLayerSize);
     return 0;
@@ -142,7 +144,7 @@ int main(int argc, char const *argv[])
 void backpropagate(Neuron **network, double *imageFeatures, double error, double *inter12, double *inter23, double output, int inputSize, int hiddenLayerSize)
 {
     double delta, outputDelta, deltas[hiddenLayerSize];
-    double weights12[inputSize][hiddenLayerSize], weights23[hiddenLayerSize];
+    double weights12[hiddenLayerSize][inputSize], weights23[hiddenLayerSize];
 
     Neuron *inputLayer, *hiddenLayer, *outputLayer;
     inputLayer = network[0];
@@ -150,10 +152,10 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
     outputLayer = network[2];
 
     // Copying weights so that values are not lost when updating neurons
-    for(int i = 0; i < inputSize; i++)
+    for(int i = 0; i < hiddenLayerSize; i++) // Each row of weights array is a neuron of hidden layer and each column is a weight
     {
-        for(int j = 0; j < hiddenLayerSize; j++)
-            weights12[i][j] = hiddenLayer[j].weights[i];
+        for(int j = 0; j < inputSize; j++)
+            weights12[i][j] = hiddenLayer[i].weights[j];
     }
 
     for(int i = 0; i < hiddenLayerSize; i++)
@@ -172,13 +174,13 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
     // Hidden layer
     for(int i = 0; i < hiddenLayerSize; i++)
     {
-        delta = sigmoidDv(inter23[i]) * (weights23[i] + outputDelta);     
+        delta = sigmoidDv(inter23[i]) * weights23[i] * outputDelta;     
 
         for(int j = 0; j < inputSize; j++)
             hiddenLayer[i].weights[j] += inter12[j] * delta;
 
         hiddenLayer[i].bias += delta;
-        deltas[i] = delta;
+        deltas[i] = delta; // Store deltas to use in input layers' equations
     }
 
     // Input layer
@@ -187,14 +189,12 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
         double sum = 0;
 
         for(int j = 0; j < hiddenLayerSize; j++)
-            sum += deltas[j] * weights12[i][j];
+            sum += deltas[j] * weights12[j][i];
 
         delta = sigmoidDv(inter12[i]) * sum;        
 
         for(int k = 0; k < inputSize; k++)
-        {
             inputLayer[i].weights[k] += imageFeatures[k] * delta;
-        }
         inputLayer[i].bias += delta;
     }
     
@@ -244,6 +244,16 @@ Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize)
     network[0] = initLayer(network[0], inputSize, inputSize); // Initializes INPUT layer
     network[1] = initLayer(network[1], inputSize, hiddenLayerSize); // Initializes HIDDEN layer
     network[2] = initLayer(network[2], hiddenLayerSize, 1); // Initializes OUTPUT layer
+
+    // for(int i = 0; i < 536; i++)
+    // {
+        
+    //     for(int j = 0; j < 10; j++)
+    //         printf("%lf ", network[0][i].weights[j]);
+        
+    //     for(int j = 525; j < 539; j++)
+    //         printf("%lf ", network[0][i].weights[j]);
+    // }
 
     return network;
 }
@@ -324,6 +334,18 @@ Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons)
         neuron.bias = getRandomNumber();
         layer[i] = neuron;
     }
+
+    // if(nOfNeurons==536)
+    // {
+    //     for(int i = 0; i < 536; i++)
+    //     {
+    //         for(int j = 0; j < 10; j++)
+    //             printf("%lf ", layer[i].weights[j]);
+            
+    //         for(int j = 525; j < 536; j++)
+    //             printf("%lf ", layer[i].weights[j]);
+    //     }
+    // }
 
     return layer;
 }
