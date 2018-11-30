@@ -146,6 +146,7 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
     double delta, outputDelta, deltas[hiddenLayerSize];
     double weights12[hiddenLayerSize][inputSize], weights23[hiddenLayerSize];
 
+    // Give aliases for each layer
     Neuron *inputLayer, *hiddenLayer, *outputLayer;
     inputLayer = network[0];
     hiddenLayer = network[1];
@@ -158,28 +159,28 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
             weights12[i][j] = hiddenLayer[i].weights[j];
     }
 
-    for(int i = 0; i < hiddenLayerSize; i++)
+    for(int i = 0; i < hiddenLayerSize; i++) // In each column is the weight of the synapse between of a neuron from hidden layer and the neuron of the last layer
         weights23[i] = outputLayer[0].weights[i];
 
     /* ============= Update values ============= */
 
     // Output layer
-    outputDelta = sigmoidDv(output) * error;
+    outputDelta = sigmoidDv(output) * error; // Applies neuron output value in sigmoid function derivative
 
     for(int i = 0; i < hiddenLayerSize; i++)
-        outputLayer[0].weights[i] += inter23[i] * outputDelta;
+        outputLayer[0].weights[i] += inter23[i] * outputDelta; // Updates weights
 
-    outputLayer[0].bias += outputDelta;
+    outputLayer[0].bias += outputDelta; // Update bias
 
     // Hidden layer
     for(int i = 0; i < hiddenLayerSize; i++)
     {
-        delta = sigmoidDv(inter23[i]) * weights23[i] * outputDelta;     
+        delta = sigmoidDv(inter23[i]) * weights23[i] * outputDelta; // Applies neuron output value in sigmoid function derivative    
 
         for(int j = 0; j < inputSize; j++)
-            hiddenLayer[i].weights[j] += inter12[j] * delta;
+            hiddenLayer[i].weights[j] += inter12[j] * delta; // Updates weights
 
-        hiddenLayer[i].bias += delta;
+        hiddenLayer[i].bias += delta; // Update bias
         deltas[i] = delta; // Store deltas to use in input layers' equations
     }
 
@@ -188,14 +189,14 @@ void backpropagate(Neuron **network, double *imageFeatures, double error, double
     {
         double sum = 0;
 
-        for(int j = 0; j < hiddenLayerSize; j++)
+        for(int j = 0; j < hiddenLayerSize; j++) // Performs the sum of the product of weights between input and hidden layers and deltas of hidden layer
             sum += deltas[j] * weights12[j][i];
 
-        delta = sigmoidDv(inter12[i]) * sum;        
+        delta = sigmoidDv(inter12[i]) * sum; // Applies neuron output value in sigmoid function derivative       
 
         for(int k = 0; k < inputSize; k++)
-            inputLayer[i].weights[k] += imageFeatures[k] * delta;
-        inputLayer[i].bias += delta;
+            inputLayer[i].weights[k] += imageFeatures[k] * delta; // Updates weights
+        inputLayer[i].bias += delta; // Update bias
     }
     
 }
@@ -245,16 +246,6 @@ Neuron **createAndInitNetwork(int inputSize, int hiddenLayerSize)
     network[1] = initLayer(network[1], inputSize, hiddenLayerSize); // Initializes HIDDEN layer
     network[2] = initLayer(network[2], hiddenLayerSize, 1); // Initializes OUTPUT layer
 
-    // for(int i = 0; i < 536; i++)
-    // {
-        
-    //     for(int j = 0; j < 10; j++)
-    //         printf("%lf ", network[0][i].weights[j]);
-        
-    //     for(int j = 525; j < 539; j++)
-    //         printf("%lf ", network[0][i].weights[j]);
-    // }
-
     return network;
 }
 
@@ -278,7 +269,7 @@ double *feedLayer(Neuron *layer, double *input, int layerSize, int inputSize)
     for(int i = 0; i < layerSize; i++)
     {
         for(int j = 0; j < inputSize; j++)
-            sum += input[j] * layer[i].weights[j];
+            sum += input[j] * layer[i].weights[j]; // Performs the sum of input values * weights
 
         sum += layer[i].bias;        
         result[i] = (double)1.0/(1.0 + pow(M_E, -sum)); // Sigmoid function. M_E is the e constant of math.h
@@ -334,18 +325,6 @@ Neuron *initLayer(Neuron *layer, int nOfWeights, int nOfNeurons)
         neuron.bias = getRandomNumber();
         layer[i] = neuron;
     }
-
-    // if(nOfNeurons==536)
-    // {
-    //     for(int i = 0; i < 536; i++)
-    //     {
-    //         for(int j = 0; j < 10; j++)
-    //             printf("%lf ", layer[i].weights[j]);
-            
-    //         for(int j = 525; j < 536; j++)
-    //             printf("%lf ", layer[i].weights[j]);
-    //     }
-    // }
 
     return layer;
 }
